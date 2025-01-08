@@ -1,0 +1,487 @@
+####
+#. Curso: Ensamble de Transcriptoma de Novo
+#. Author: Veronica Jimenez Jacinto
+#. Sitio: 
+# https://github.com/vjimenez9/EnsambladoTranscritoNovo
+###
+Antes de ejecutar, se asume que se conecto al servidor 201.131.57.37 (bioinformática.insp.mx -p 256)
+Recuerda que el simbolo $. No se escribe, solo indica lo que tu debes escribir...
+Activa el ambiente de conda:
+conda activate tools_bioinfo
+
+#################################
+# Ejecutando Trinity
+# 
+# Diapositiva 22
+##################################
+# Realiza el reporte de calidad de algún par de secuencias o todas
+# Probando para una sola:
+# Primero creamos el directorio de salida
+$ mkdir QualityReport
+$ fastqc -o QualityReport /tmp/Transc/Data/Fructanos_1_R1.fastq 
+
+# O ejecutando para todas:
+$ fastqc -o QualityReport /tmp/Transc/Data/*.fastq 
+
+#################################
+# Podemos llevarlas a otra máquina para verlas en un navegador...
+# 
+# Diapositiva 23
+##################################
+# Desde una terminal que abras en tu propia maquina:
+scp -r  -P 265 alumnoXX@bioinformatica.insp.mx:/home/tucuenta/PracticaTrinity/QualityReport . 
+
+
+#################################
+# Ejecutando Trinity
+# 
+# Diapositiva 29
+##################################
+# Trinity se corre a nivel de línea de comandos:
+$ Trinity
+
+#################################
+# Ejecutando Trinity
+# 
+# Diapositiva 32
+##################################
+# Vemos el contenido del archivo
+$ cat sample 
+
+#################################
+# Preparando los datos
+# 
+# Diapositiva 33
+##################################
+# Genere una carpeta llamada PracticaTrinity
+$ mkdir PracticaTrinity
+# Entre en la carpeta:
+$ cd PracticaTrinity
+# Genere las ligas a los archivos fastq de la carpeta /tmp/Transc/Data/*.*
+$ ln -s /tmp/Transc/Data/*.* .
+Verifique que se generaron bien las ligas
+$ ls -ltr 
+
+
+
+#################################
+# Línea de ejecución típica
+# 
+# Diapositiva 33
+##################################
+# Opción 1:
+# Especifique todas las muestras
+
+$ Trinity --seqType fq --max_memory 2G --CPU 1 \
+--left Fructanos_1_R1.fastq,Fructanos_2_R1.fastq,Fructanos_3_R1.fastq,Glicerol_1_R1.fastq,Glicerol_2_R1.fastq,Glicerol_3_R1.fastq \
+--right Fructanos_1_R2.fastq,Fructanos_2_R2.fastq,Fructanos_3_R2.fastq,Glicerol_1_R2.fastq,Glicerol_2_R2.fastq,Glicerol_3_R2.fastq \
+--output trinity_output 2>&1 > run_all.log &
+
+#################################
+# Línea de ejecución típica
+# 
+# Diapositiva 34
+##################################
+# Otra opción, es usar el archivo descriptor: Archivo_de_Muestras.txt
+
+$ Trinity --seqType fq --max_memory 2G --CPU 1 \
+ --samples_file Archivo_Muestras.txt \
+ --output trinity_output2 > run_all2.log 2>&1 &
+
+#################################
+# Practica 1
+# 
+# Diapositiva 36
+##################################
+# Consideré muestras en 2 condiciones (Fructuano y Glicerol), con 3 replicas cada una,  
+# en archivos en formato fastq, pareados, que se encuentran en el subdirectorio:
+# /tmp/Data/ para llevar a cabo el ensamblado de novo, usando trinity, 
+#####
+# 1.  Conectarse al servidor bioinformatica.insp.mx -p 265
+
+$ ssh alumnoXX@bioinformatica.insp.mx -p 265
+alumno@bioinformatica.insp.mx's password:
+
+##### 
+# La variable de ambiente TRINITY_HOME esta definida para ustedes. ¿Cual es su valor?
+$ echo $TRINITY_HOME 
+/home/bioinformatica/trinityrnaseq-v2.9.0/
+
+#Si no esta definida genérela con la instrucción:
+TRINITY_HOME=/usr/local/miniconda/envs/tools_bioinfo/opt/trinity-2.5.1/
+
+#####
+# 2. Si aun no lo ha hecho, haga la preparación de los datos con lo indicado en la diapositiva 44. 
+Haga un subdirectorio llamado PracticaTrinity, y colóquese dentro de él.
+
+#####
+# 3. Calcule cuantas Secuencias participaran en el ensamblado, para determinar la cantidad de GB
+
+# Calculamos el tamaño de un archivo, contando la longitud de las lecturas por el numero de lecturas
+# En el siguiente comando de awk:
+# NR es el numero de renglon que se esta analizando. 
+# % es un modulo, es decir el residuo de una división entera
+# n guarda la longitud de la secuencia
+# linea cuenta el numero de lineas que son secuencias
+awk 'NR%4==2{n=length($0); linea++;}END{print n*linea}' *.fastq
+152192254
+
+# Si cada carácter es un byte y 1024 bytes es un kb y 1024 kb es un MB: 
+echo "152192254/1024/1024" | bc
+145
+
+#####
+# 4. Nos preparemos para llevar a cabo el ensamblado de Novo usando trinity …
+
+# Opción 1: Poniendo la lista de nombres de archivos:
+
+# Para obtener la lista de nombres, podemos usar awk, Para las lecturas 1:
+$ ls -1 *R1.fastq | awk '{linea = linea ","$1}END{print linea}'
+,Fructanos_1_R1.fastq,Fructanos_2_R1.fastq,Fructanos_3_R1.fastq,Glicerol_1_R1.fastq,Glicerol_2_R1.fastq,Glicerol_3_R1.fastq
+
+# Para las lecturas2:
+$ ls -1 *R2.fastq | awk '{linea = linea ","$1}END{print linea}'
+,Fructanos_1_R2.fastq,Fructanos_2_R2.fastq,Fructanos_3_R2.fastq,Glicerol_1_R2.fastq,Glicerol_2_R2.fastq,Glicerol_3_R2.fastq
+
+
+Trinity --seqType fq --max_memory 1G \
+ --left Fructanos_1_R1.fastq,Fructanos_2_R1.fastq,Fructanos_3_R1.fastq,Glicerol_1_R1.fastq,Glicerol_2_R1.fastq,Glicerol_3_R1.fastq \
+ --right Fructanos_1_R2.fastq,Fructanos_2_R2.fastq,Fructanos_3_R2.fastq,Glicerol_1_R2.fastq,Glicerol_2_R2.fastq,Glicerol_3_R2.fastq \
+ --output trinity_output 2>&1 > run_all.log &
+
+
+# Opción 2, usando el archivo que describe todas las condiciones, replicas y archivos (Archivo_Muestras.txt):
+# vemos su contenido:
+$ more Archivo_Muestras.txt
+Fructanos	Fructanos_rep1	Fructanos_1_R1.fastq Fructanos_1_R2.fastq
+Fructanos	Fructanos_rep2	Fructanos_2_R1.fastq Fructanos_2_R2.fastq
+Fructanos	Fructanos_rep3	Fructanos_3_R1.fastq Fructanos_3_R2.fastq
+Glicerol	Glicerol_rep1	Glicerol_1_R1.fastq	Glicerol_1_R2.fastq
+Glicerol	Glicerol_rep2	Glicerol_2_R1.fastq	Glicerol_2_R2.fastq
+Glicerol	Glicerol_rep3	Glicerol_3_R1.fastq	Glicerol_3_R2.fastq
+
+
+$ Trinity --seqType fq --max_memory 1G --samples_file Archivo_Muestras.txt  --output trinity_output2 2>&1 > run_all2.log &
+
+#################################
+# Monitoreo de la ejecución de Trinity
+# 
+# Diapositiva 38
+##################################
+# Revisar como proceso de Trinity y verificar  cuanta memoria esa consumiento:
+Top
+
+#################################
+# Monitoreo de la ejecución de Trinity
+# 
+# Diapositiva 42
+##################################
+# Revisa el contenido del archivo run_all.log (o run_all2.log si corriste la segunda version).
+$ tail run_all.log
+
+
+#################################
+# Revisando la salida de trinity
+# 
+# Diapositiva 42
+##################################pwd
+Verifica que la ultima linea de tu archivo log sea esta:
+$ more run_all.log
+###################################################################
+Trinity assemblies are written to /home/alumnoXX/PracticaTrinity/trinity_output/Trinity.fasta
+###################################################################
+
+
+#################################
+# Revisando la salida de trinity
+# 
+# Diapositiva 44
+##################################pwd
+# 
+
+more trinity_output/Trinity.fasta
+>TRINITY_DN81_c0_g1_i1 len=844 path=[0:0-843]
+CTACTCCGTAATTACTGAGACTGCTACCATCCAAGGCCCCGTTGAGACCGAGTATTTCACTTACTCTGGCGCTACCACCACCCTGTCCGTTGTTCCTGAAACTCAAGTTACCACTGT
+CCACAATGTTGAGACATCTGTGTATACTGTCTACAACAATGGTCAAGGCGAGCTCCGCACCGCAACCGTCACTCTGCAAGGCAGCGGTCCTCAAACATTAACCACTGTACTCGTCTG
+AACAACCAATTGTATTTCTATTTTCTAGATTTCCCATATTATATCGAATTATCTTTAATGTTTGTATCGTACAATACCACTACCTAGGCTTCACTACTCTATTTGGGTGAATATTCA
+TGGATATACACATAACATATATACATAAATGCCGCCCAGCCTTATGGTATAGGGTCAGGGTCAATAAATGGTTGGGAGATTATTACATCTAACCTAGCTCCACCACCTTGTTCCCGG
+GGCCAATGAGCGCGTCAGCAAATAGCTGACAAACTCTTCAAGCGATACCCTCTCATAACCAACCCAAACTTAGCAGTGACGACGACACTATGCTTCGTGGAATTTCTCACCTTCAGA
+AGTCCCAGCAAGTTCTGCGTACTAGTAGGTTTGCTCGTTTGCAGAGCACTTATCCTGTCGGTACTCCTCAGGGTGTCCCCCCTGCCGGTTTCCGTGTCCCCCCTCCCCGTTCGTGGG
+ACGATCCTGAGGGCGAAGGCGCTCTTTCCAAGGCTACCAAGTGGTTCTTGTTGGCCGAGATGGGTCGCGGTATGCTTACAGCCTTCGAGCAGTCATTCAGGGCTCCCTATACTATCT
+ACTTCCCCTACGAGAGAGGTCCCAT
+...
+
+
+#################################
+# Calculando N50:
+# 
+# Diapositiva 50
+##################################
+#y verificamos su contenido:
+echo $TRINITY_HOME
+
+# Si no estuviera definida, Definimos al variable HOME_TRINITY
+$ TRINITY_HOME=/usr/local/miniconda/envs/tools_bioinfo/opt/trinity-2.5.1/
+
+$ PATH=$PATH:=/usr/local/miniconda/envs/tools_bioinfo/opt/trinity-2.5.1/:/usr/bin/bowtie:/
+
+#y verificamos su contenido:
+echo $TRINITY_HOME
+
+#################################
+# Calculando N50:
+# 
+# Diapositiva 51
+##################################
+
+# Calculamos las estadísticas del ensamblado generando
+
+$ $TRINITY_HOME/util/TrinityStats.pl  trinity_output/Trinity.fasta
+
+
+################################
+## Counts of transcripts, etc.
+################################
+Total trinity 'genes':	86
+Total trinity transcripts:	88
+Percent GC: 44.70
+
+########################################
+Stats based on ALL transcript contigs:
+########################################
+
+	Contig N10: 4213
+	Contig N20: 3310
+	Contig N30: 2368
+	Contig N40: 2079
+	Contig N50: 1919
+
+	Median contig length: 1142
+	Average contig: 1393.02
+	Total assembled bases: 122586
+
+
+#####################################################
+## Stats based on ONLY LONGEST ISOFORM per 'GENE':
+#####################################################
+
+	Contig N10: 4213
+	Contig N20: 3310
+	Contig N30: 2368
+	Contig N40: 2079
+	Contig N50: 1919
+
+	Median contig length: 1142
+	Average contig: 1396.69
+	Total assembled bases: 120115
+
+
+
+#################################
+# Trinity soporta  RSEM, eXpress  y kallisto y salmon.
+# 
+# Diapositiva 59
+##################################
+
+$ $TRINITY_HOME/util/align_and_estimate_abundance.pl
+
+#########################################################################
+#
+########################
+#  Essential parameters:
+########################
+#
+#  --transcripts <string>           transcript fasta file
+#
+#  --seqType <string>               fq|fa
+# 
+#  If Paired-end:
+#
+#     --left <string>
+#     --right <string>
+#  
+#   or Single-end:
+#
+#      --single <string>
+#
+#   or (preferred):
+#
+#      --samples_file <string>    tab-delimited text file indicating biological replicate relationships.
+#                                   ex.
+#                                        cond_A    cond_A_rep1    A_rep1_left.fq    A_rep1_right.fq
+#                                        cond_A    cond_A_rep2    A_rep2_left.fq    A_rep2_right.fq
+#                                        cond_B    cond_B_rep1    B_rep1_left.fq    B_rep1_right.fq
+#                                        cond_B    cond_B_rep2    B_rep2_left.fq    B_rep2_right.fq
+#
+#                      # if single-end instead of paired-end, then leave the 4th column above empty.
+#
+#
+#
+#  --est_method <string>           abundance estimation method.
+#                                        alignment_based:  RSEM
+#                                        alignment_free: kallisto|salmon
+#  
+###################################
+#  Potentially optional parameters:
+###################################
+#
+# --output_dir <string>            write all files to output directory 
+#                                  (note, if using --samples_file, output_dir will be set automatically according to replicate name))
+#  
+#
+#  if alignment_based est_method:
+#       --aln_method <string>            bowtie|bowtie2 alignment method.  (note: RSEM requires either bowtie or bowtie2)
+#                                       
+
+
+#################################
+# Preparamos  el genoma de referencia
+# 
+# Diapositiva 61
+##################################
+
+# cuantificacion con RSEM
+# nos movemos en el directorio de output de trinity.
+# Preparamos el genoma de referencia para los alineamientos y estimación de la abundancia:
+$ $TRINITY_HOME/util/align_and_estimate_abundance.pl --transcripts trinity_output/Trinity.fasta --est_method RSEM --aln_method bowtie2 --trinity_mode --prep_reference
+
+#################################
+# Ejecución de la alineación y contabilización
+# 
+# Diapositiva 62
+##################################
+# 2.Luego corremos el alineamiento y la estimación de la abundancia para cada uno de los tratamientos, para cuantificar la replica: 
+
+$ $TRINITY_HOME/util/align_and_estimate_abundance.pl --transcripts trinity_output/Trinity.fasta --seqType fq --left Fructanos_1_R1.fastq --right Fructanos_1_R2.fastq --est_method RSEM --aln_method bowtie2 --trinity_mode --output Fruct_rep1
+
+#################################
+# Ejecución de la estimación de abundancias
+# 
+# Diapositiva 63
+##################################
+# Lo podemos hacer también con todas las muestras de una vez
+# En este caso, creara un directorio por replica.
+
+
+$ $TRINITY_HOME/util/align_and_estimate_abundance.pl --transcripts trinity_output/Trinity.fasta --seqType fq --samples_file Archivo_Muestras.txt --est_method RSEM --aln_method bowtie2 --trinity_mode 
+
+#################################
+# Revisando la salida
+# 
+# Diapositiva 66
+##################################
+#3. Revisemos al final el archivo de conteos de genes o isoformas: 
+# Se generó un directorio Fructanos_rep?  O Glicerol_rep? Para cada replica
+$ ls -ltr 
+Fructanos_rep1
+Fructanos_rep2
+Fructanos_rep3
+Glicerol_rep1
+Glicerol_rep2
+Glicerol_rep3
+
+# Y dentro de cada unos los siguientes archivos:
+$ ls -1 Fructanos_rep1/
+bowtie2.bam
+bowtie2.bam.for_rsem.bam
+bowtie2.bam.ok
+RSEM.genes.results
+RSEM.isoforms.results
+RSEM.isoforms.results.ok
+RSEM.stat
+
+# vemos el contenido de RSEM.gene.results y RSEM.isoforsm.results que son los que nos interesan:
+$ head Fructanos_rep1/RSEM.*results
+==> Fructanos_rep1/RSEM.genes.results <==
+gene_id	transcript_id(s)	length	effective_length	expected_count	TPM	FPKM
+TRINITY_DN0_c0_g1	TRINITY_DN0_c0_g1_i1,TRINITY_DN0_c0_g1_i2	520.00	368.64	394.00	3862.95	5457.39
+TRINITY_DN10_c0_g1	TRINITY_DN10_c0_g1_i1	2235.00	2083.64	674.00	1169.14	1651.71
+TRINITY_DN11_c0_g1	TRINITY_DN11_c0_g1_i1	2368.00	2216.64	218.00	355.46	502.18
+TRINITY_DN12_c0_g1	TRINITY_DN12_c0_g1_i1	449.00	297.64	66.00	801.45	1132.25
+TRINITY_DN13_c0_g1	TRINITY_DN13_c0_g1_i1	2657.00	2505.64	1614.00	2328.17	3289.13
+TRINITY_DN14_c0_g1	TRINITY_DN14_c0_g1_i1	1137.00	985.64	980.00	3593.66	5076.94
+TRINITY_DN15_c0_g1	TRINITY_DN15_c0_g1_i1	1919.00	1767.64	52.00	106.33	150.21
+TRINITY_DN16_c0_g1	TRINITY_DN16_c0_g1_i1	3732.00	3580.64	4864.00	4909.79	6936.31
+TRINITY_DN17_c0_g1	TRINITY_DN17_c0_g1_i1	1915.00	1763.64	113.00	231.58	327.16
+
+==> Fructanos_rep1/RSEM.isoforms.results <==
+transcript_id	gene_id	length	effective_length	expected_count	TPM	FPKM	IsoPct
+TRINITY_DN0_c0_g1_i1	TRINITY_DN0_c0_g1	520	368.64	394.00	3862.95	5457.39	100.00
+TRINITY_DN0_c0_g1_i2	TRINITY_DN0_c0_g1	496	344.64	0.00	0.00	0.00	0.00
+TRINITY_DN10_c0_g1_i1	TRINITY_DN10_c0_g1	2235	2083.64	674.00	1169.14	1651.71	100.00
+TRINITY_DN11_c0_g1_i1	TRINITY_DN11_c0_g1	2368	2216.64	218.00	355.46	502.18	100.00
+TRINITY_DN12_c0_g1_i1	TRINITY_DN12_c0_g1	449	297.64	66.00	801.45	1132.25	100.00
+TRINITY_DN13_c0_g1_i1	TRINITY_DN13_c0_g1	2657	2505.64	1614.00	2328.17	3289.13	100.00
+TRINITY_DN14_c0_g1_i1	TRINITY_DN14_c0_g1	1137	985.64	980.00	3593.66	5076.94	100.00
+TRINITY_DN15_c0_g1_i1	TRINITY_DN15_c0_g1	1919	1767.64	52.00	106.33	150.21	100.00
+TRINITY_DN16_c0_g1_i1	TRINITY_DN16_c0_g1	3732	3580.64	4864.00	4909.79	6936.31	100.00
+
+
+#################################
+# Construyendo las matrices de abundancias
+# 
+# Diapositiva 68
+##################################
+$ $TRINITY_HOME/util/abundance_estimates_to_matrix.pl 
+
+####################################################################################
+#
+# Usage:  /home/bioinformatica/trinityrnaseq-v2.9.0//util/abundance_estimates_to_matrix.pl --est_method <method>  sample1.results sample2.results ...
+#
+#      or  /home/bioinformatica/trinityrnaseq-v2.9.0//util/abundance_estimates_to_matrix.pl --est_method <method> --quant_files file.listing_target_files.txt
+#
+#      Note, if only a single input file is given, it's expected to contain the paths to all the target abundance estimation files.
+#
+# Required:
+#            
+#  --est_method <string>           RSEM|eXpress|kallisto|salmon  (needs to know what format to expect)
+#
+#  --gene_traes_map <string>           the gene-to-transcript mapping file. (if you don't want gene estimates, indicate 'none'.
+#
+#
+# Options:
+#
+#  --cross_sample_norm <string>         TMM|UpperQuartile|none   (default: TMM)
+#
+#  --name_sample_by_basedir             name sample column by dirname instead of filename
+#      --basedir_index <int>            default(-2)
+#
+#  --out_prefix <string>                default: value for --est_method
+#
+#  --quant_files <string>              file containing a list of all the target files.
+#
+######################################################################################
+
+#################################
+# Generando la matriz de abundancias
+# 
+# Diapositiva 69
+##################################
+# Hagamos ahora la Matriz de abundancias
+
+$ $TRINITY_HOME/util/abundance_estimates_to_matrix.pl  \
+     --est_method RSEM --name_sample_by_basedir\
+      --gene_trans_map trinity_output/Trinity.fasta.gene_trans_map \
+      Fructanos_rep1/RSEM.isoforms.results  \
+Fructanos_rep3/RSEM.isoforms.results   \
+Glicerol_rep2/RSEM.isoforms.results \
+Fructanos_rep2/RSEM.isoforms.results \
+Glicerol_rep1/RSEM.isoforms.results \
+Glicerol_rep3/RSEM.isoforms.results
+
+
+#################################
+# Estadístico Ex50
+# 
+# Diapositiva 72
+##################################
+
+$TRINITY_HOME/util/misc/contig_ExN50_statistic.pl      RSEM.isoform.TMM.EXPR.matrix trinity_output/Trinity.fasta | tee ExN50.stats
+
+#################################
+# idéame
+# 
+# Diapositiva 74
+##################################
+
+http://www.uusmb.unam.mx/ideamex/
